@@ -102,6 +102,21 @@ jobs:
         run: |
           printf '\n## Sample PR evidence stages\n\nHead SHA: `%s`\n\nAPI tests: %s\n\nBrowser tests: %s\n\nExhibit collection: %s\n\nArtifact upload: %s\n\n' "$HEAD_SHA" "$API_OUTCOME" "$BROWSER_OUTCOME" "$COLLECTION_OUTCOME" "$UPLOAD_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
           printf '%s\n' 'Local sample only. No deployed staging was exercised. A passing test run is not a trusted verified verdict. Missing captures never imply success.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Export evidence job outputs
+        if: always()
+        env:
+          JOB_STEPS: ${{ toJSON(steps) }}
+        run: |
+          mkdir -p stage-outputs
+          python3 -c 'import json,os,pathlib; pathlib.Path("stage-outputs/steps.json").write_text(json.dumps(json.loads(os.environ["JOB_STEPS"]), indent=2)+"\n")'
+      - name: Save evidence job outputs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: exhibit-job-output-evidence-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: stage-outputs/steps.json
+          retention-days: 7
+          if-no-files-found: error
       - name: Preserve failed or missing evidence stages
         if: always() && (steps.api.outcome != 'success' || steps.browser.outcome != 'success' || steps.collect.outcome != 'success' || steps.upload.outcome != 'success')
         run: exit 1
@@ -146,6 +161,21 @@ jobs:
           path: codex-review/
           retention-days: 7
           if-no-files-found: error
+      - name: Export Codex job outputs
+        if: always()
+        env:
+          JOB_STEPS: ${{ toJSON(steps) }}
+        run: |
+          mkdir -p stage-outputs
+          python3 -c 'import json,os,pathlib; pathlib.Path("stage-outputs/steps.json").write_text(json.dumps(json.loads(os.environ["JOB_STEPS"]), indent=2)+"\n")'
+      - name: Save Codex job outputs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: exhibit-job-output-codex-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: stage-outputs/steps.json
+          retention-days: 7
+          if-no-files-found: error
   publish-comment:
     needs: [gate, evidence, codex-review]
     if: always() && needs.gate.outputs.eligible == 'true' && (needs.codex-review.result == 'success' || needs.codex-review.result == 'failure')
@@ -176,3 +206,19 @@ jobs:
           bundle: pr-comment
           head-sha: ${{ needs.gate.outputs.sha }}
           pull-request: ${{ github.event.pull_request.number }}
+
+      - name: Export publisher job outputs
+        if: always()
+        env:
+          JOB_STEPS: ${{ toJSON(steps) }}
+        run: |
+          mkdir -p stage-outputs
+          python3 -c 'import json,os,pathlib; pathlib.Path("stage-outputs/steps.json").write_text(json.dumps(json.loads(os.environ["JOB_STEPS"]), indent=2)+"\n")'
+      - name: Save publisher job outputs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: exhibit-job-output-publish-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: stage-outputs/steps.json
+          retention-days: 7
+          if-no-files-found: error

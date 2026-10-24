@@ -56,3 +56,35 @@ for (const [scenario, message] of [
     await request.delete("/api/run?runId=" + runId);
   });
 }
+
+test("express delivery updates the frontend total and matches the backend receipt", async ({
+  page,
+  request,
+}) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("button", { name: "Place sample order" }),
+  ).toBeEnabled();
+  await page.getByLabel("Delivery", { exact: true }).selectOption("express");
+  await expect(page.getByText("Delivery $5.00", { exact: true })).toBeVisible();
+  await expect(page.getByText("Total $29.00", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Place sample order" }).click();
+  const runId = (await page.locator("#run").innerText()).replace("Run: ", "");
+  const response = await request.get("/api/order?runId=" + runId);
+  expect(response.status()).toBe(200);
+  const { order } = await response.json();
+  expect(order).toMatchObject({
+    delivery: "express",
+    subtotalCents: 2400,
+    deliveryCents: 500,
+    totalCents: 2900,
+  });
+  await expect(page.getByRole("status")).toHaveText(
+    `Order confirmed: ${order.id} · $29.00`,
+  );
+  await page.screenshot({
+    path: test.info().outputPath("express-receipt.png"),
+    fullPage: true,
+  });
+  await request.delete("/api/run?runId=" + runId);
+});

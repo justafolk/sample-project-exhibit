@@ -115,3 +115,11 @@ The Codex authentication file is an account credential. It is not automatically 
 The **codex-review** job publishes a `codex-ci-report-pr-<PR>-<RUN>-<ATTEMPT>` artifact on success and failure. Download and extract it, then open **`report.html`** for the standalone report, **`report.md`** for Markdown or **`report.json`** for machine-readable results. A completed model review also retains the original `review.md`.
 
 The report ties the Codex outcome to the PR/head SHA and run attempt, lists validated browser assertion and recording counts, and presents agent suggestions separately from deterministic results. Missing authentication is **not configured**; setup/agent errors produce a failure report rather than invented advice. The Markdown report is also available in the Actions job summary. Reports remain advisory and Unverified, and do not claim Codex watched the video content. Downloads are retained for seven days alongside the separate original video evidence bundle.
+
+## Full-stack evidence demo: express delivery
+
+Checkout now offers **Standard (free)** and **Express ($5.00)** delivery. Choosing Express visibly updates the total from $24.00 to $29.00. The API independently calculates `subtotalCents`, `deliveryCents`, `delivery` and `totalCents`; submitted client totals cannot change the price. The first committed order remains stable on retries, and invalid delivery/body input creates no order.
+
+The `agent-test` workflow runs **9 named backend HTTP tests** with `npm run test:api:evidence` and **4 recorded browser flows**. The new recording shows selecting Express, the updated price and the confirmation matching the backend receipt. Backend checks cover pricing, client-price tampering, validation, rejection paths, idempotency and cleanup isolation.
+
+The raw Node JUnit (`api-tests.xml`) and clean-start provenance (`api-capture.json`) are included in the evidence bundle. Exhibit validates and hashes those files, adds individual API assertions to the same manifest as browser/video evidence, and keeps API failures failed. The Codex CI report displays separate frontend/backend counts and each named test's outcome. No agent commentary can convert a failing API assertion into a pass.

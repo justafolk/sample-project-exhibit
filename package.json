@@ -12,7 +12,8 @@
     "test": "node --test tests/storefront.test.js",
     "evidence": "node scripts/evidence.js",
     "test:e2e": "playwright test",
-    "test:exhibit": "node scripts/check-exhibit.js"
+    "test:exhibit": "node scripts/check-exhibit.js",
+    "test:api:evidence": "node scripts/api-evidence.js"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1"

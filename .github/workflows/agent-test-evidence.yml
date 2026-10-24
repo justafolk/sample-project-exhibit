@@ -17,7 +17,7 @@ jobs:
       sha: ${{ steps.gate.outputs.sha }}
     steps:
       - id: gate
-        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@420b7dc23252709e8b278e6eb3185d0722db8ddf
+        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@5b0b22406fe8b0acaf85b154e60d772004d54049
         with:
           mode: gate
   evidence:
@@ -43,7 +43,7 @@ jobs:
       - name: Run API evidence tests
         id: api
         continue-on-error: true
-        run: npm test
+        run: npm run test:api:evidence
       - name: Record browser evidence tests
         id: browser
         continue-on-error: true
@@ -51,9 +51,10 @@ jobs:
       - name: Collect via Exhibit
         id: collect
         if: always() && (steps.browser.outcome == 'success' || steps.browser.outcome == 'failure')
-        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@420b7dc23252709e8b278e6eb3185d0722db8ddf
+        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@5b0b22406fe8b0acaf85b154e60d772004d54049
         with:
           require-video: "true"
+          require-api: "true"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         id: upload
         if: always() && (steps.browser.outcome == 'success' || steps.browser.outcome == 'failure')
@@ -107,7 +108,7 @@ jobs:
       - name: Review evidence with Codex CLI
         id: agent
         if: always()
-        uses: justafolk/exhibit/.github/actions/codex-evidence-review@420b7dc23252709e8b278e6eb3185d0722db8ddf
+        uses: justafolk/exhibit/.github/actions/codex-evidence-review@5b0b22406fe8b0acaf85b154e60d772004d54049
         with:
           codex-auth-json: ${{ secrets.CODEX_AUTH_JSON }}
           evidence-bundle: evidence-bundle

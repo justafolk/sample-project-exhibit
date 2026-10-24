@@ -17,7 +17,7 @@ jobs:
       sha: ${{ steps.gate.outputs.sha }}
     steps:
       - id: gate
-        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@2bd2fd731ceb327bb18bdb5c5c57ce1c5570416f
+        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@64505a0f9db8edbc61937b96fdad61fadfe0cebf
         with:
           mode: gate
   evidence:
@@ -51,7 +51,7 @@ jobs:
       - name: Collect via Exhibit
         id: collect
         if: always() && (steps.browser.outcome == 'success' || steps.browser.outcome == 'failure')
-        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@2bd2fd731ceb327bb18bdb5c5c57ce1c5570416f
+        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@64505a0f9db8edbc61937b96fdad61fadfe0cebf
         with:
           require-video: "true"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -106,7 +106,7 @@ jobs:
           path: evidence-bundle
       - name: Review evidence with Codex CLI
         id: agent
-        uses: justafolk/exhibit/.github/actions/codex-evidence-review@2bd2fd731ceb327bb18bdb5c5c57ce1c5570416f
+        uses: justafolk/exhibit/.github/actions/codex-evidence-review@64505a0f9db8edbc61937b96fdad61fadfe0cebf
         with:
           codex-auth-json: ${{ secrets.CODEX_AUTH_JSON }}
           evidence-bundle: evidence-bundle

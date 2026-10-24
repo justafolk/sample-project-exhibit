@@ -1,0 +1,18 @@
+version: 1
+id: field-store-local
+status: example-not-approved
+# Documentation only; Exhibit does not execute this file.
+head: resolved-by-future-trusted-orchestrator
+install: [npm, ci]
+start: [npm, run, dev]
+health_path: /healthz
+version_path: /version
+policy:
+  production: deny
+  fork_pull_requests: deny
+  shared_database_migrations: deny
+  staging_writes: reviewed-run-scoped-seed-only
+  queue_consumers: disabled
+  network: loopback-only
+  max_runtime_seconds: 120
+  max_concurrent_runs: 1

@@ -1,0 +1,15 @@
+{
+  "notice": "Illustrative completeness inputs only. Replace synthetic SHA and PR with real committed values before use; ready never authorizes execution.",
+  "ready": {
+    "repository": "justafolk/sample-project-exhibit",
+    "pullRequest": 1,
+    "headSha": "0000000000000000000000000000000000000001",
+    "changeKind": "fullstack",
+    "environment": "staging",
+    "flowIds": ["checkout.saved-address"],
+    "runbookRef": "exhibit/runbook.yaml@0000000000000000000000000000000000000001",
+    "testTenant": "local-sample-only"
+  },
+  "needs_info": {"repository": "justafolk/sample-project-exhibit", "changeKind": "frontend", "environment": "staging"},
+  "not_testable": {"repository": "justafolk/sample-project-exhibit", "changeKind": "frontend", "environment": "production"}
+}

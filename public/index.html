@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Field Store · Exhibit sample</title>
+    <style>
+      body {
+        font: 17px system-ui;
+        color: #26332e;
+        background: #f4f5ef;
+        margin: 0;
+      }
+      main {
+        max-width: 760px;
+        margin: 64px auto;
+        padding: 24px;
+      }
+      header {
+        border-bottom: 1px solid #ccd3ca;
+        padding-bottom: 24px;
+      }
+      .tag {
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #476544;
+      }
+      h1 {
+        font: 48px Georgia;
+        margin: 18px 0;
+      }
+      section {
+        background: white;
+        border: 1px solid #dce0d6;
+        border-radius: 12px;
+        padding: 24px;
+        margin: 20px 0;
+      }
+      .item {
+        display: flex;
+        justify-content: space-between;
+        padding: 14px 0;
+        border-bottom: 1px solid #eee;
+      }
+      label {
+        display: block;
+        margin: 18px 0;
+      }
+      button,
+      select {
+        font: inherit;
+        padding: 12px;
+        border-radius: 7px;
+        border: 1px solid #bcc8bb;
+      }
+      button {
+        background: #294d36;
+        color: white;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.5;
+      }
+      #result {
+        white-space: pre-wrap;
+      }
+      small {
+        color: #58665c;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="tag">Exhibit testing fixture · sample data only</span>
+        <h1>Field Store</h1>
+        <p>A little checkout. Observable outcomes.</p>
+        <small>No real payments, accounts, email or persistent data.</small>
+      </header>
+      <section>
+        <h2>Your cart</h2>
+        <div id="items" aria-live="polite">Loading catalog…</div>
+        <strong id="total"></strong>
+      </section>
+      <section>
+        <h2>Checkout</h2>
+        <label
+          ><input type="radio" checked name="address" value="saved-home" />
+          Sample home · 42 Example Lane, Testville</label
+        ><label for="scenario">Test scenario</label
+        ><select id="scenario">
+          <option value="happy">Successful checkout</option>
+          <option value="payment-declined">Payment declined</option>
+          <option value="out-of-stock">Out of stock</option>
+        </select>
+        <p>
+          <button id="checkout" disabled>Place sample order</button>
+          <button id="reset">Reset this run</button>
+        </p>
+        <p id="result" role="status" aria-live="polite"></p>
+        <small id="run"></small>
+      </section>
+    </main>
+    <script type="module">
+      const runId = "browser-" + crypto.randomUUID();
+      document.querySelector("#run").textContent = "Run: " + runId;
+      const result = document.querySelector("#result");
+      const button = document.querySelector("#checkout");
+      async function request(path, method = "GET", body) {
+        const response = await fetch(
+          path + (path.includes("?") ? "&" : "?") + "runId=" + runId,
+          {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: body ? JSON.stringify(body) : undefined,
+          },
+        );
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+        return data;
+      }
+      async function seed() {
+        await request("/api/seed", "POST");
+      }
+      try {
+        const { items } = await request("/api/catalog");
+        for (const item of items) {
+          const row = document.createElement("div");
+          row.className = "item";
+          row.textContent =
+            item.name + " — $" + (item.priceCents / 100).toFixed(2);
+          document.querySelector("#items").append(row);
+        }
+        document.querySelector("#items").firstChild.remove();
+        document.querySelector("#total").textContent =
+          "Total $" +
+          (items.reduce((sum, i) => sum + i.priceCents, 0) / 100).toFixed(2);
+        await seed();
+        button.disabled = false;
+      } catch (error) {
+        result.textContent = error.message;
+      }
+      button.onclick = async () => {
+        button.disabled = true;
+        try {
+          const { order } = await request("/api/checkout", "POST", {
+            addressId: "saved-home",
+            scenario: document.querySelector("#scenario").value,
+          });
+          result.textContent =
+            "Order confirmed: " +
+            order.id +
+            " · $" +
+            (order.totalCents / 100).toFixed(2);
+        } catch (error) {
+          result.textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
+      };
+      document.querySelector("#reset").onclick = async () => {
+        try {
+          await request("/api/run", "DELETE");
+          await seed();
+          result.textContent = "Run reset. No order exists.";
+        } catch (error) {
+          result.textContent = error.message;
+        }
+      };
+    </script>
+  </body>
+</html>

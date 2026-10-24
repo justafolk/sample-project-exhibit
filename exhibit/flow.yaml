@@ -1,0 +1,19 @@
+version: 1
+id: checkout.saved-address
+status: example-not-approved
+name: Field Store saved-address checkout
+paths: ['src/**', 'public/**']
+entrypoint: /
+services: [storefront]
+preconditions:
+  - loopback-only sample server with no secrets
+  - seed a unique run ID using POST /api/seed?runId=RUN_ID
+assertions:
+  - saved-home address is selected
+  - order total is 2400 cents and matches the API response
+  - confirmation contains the API-created order ID
+  - declined payment and out-of-stock scenarios create no order
+  - cleanup removes only the selected run
+cleanup:
+  - DELETE /api/run?runId=RUN_ID
+not_covered: [production payments, real email, persistent storage, trusted execution]

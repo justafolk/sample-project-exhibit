@@ -1,0 +1,77 @@
+# Field Store — Exhibit sample project
+
+A runnable customer-side fixture for `justafolk/exhibit`: a small storefront with a saved-address checkout, deterministic totals, rejection scenarios, run-scoped data and cleanup. All data is sample data. No payment service, email, credentials, database or external network is required by the application. State lasts only for the server process.
+
+This project lives in `sample-project-exhibit` (the selected sample repository). It does not add fake integrations or change Exhibit itself.
+
+## Run and test
+
+Use Node 22.12+ and npm 10:
+
+```sh
+npm ci
+npm start
+```
+
+The server binds to loopback port 4173; set `PORT` to choose another port. Use a local browser when available. Cloud onboarding validates it internally and does not provide a public preview.
+
+```sh
+npm test                  # HTTP/domain integration test with an ephemeral server
+npx playwright install chromium
+npm run test:e2e           # 3 browser flows, isolated server on port 4174
+npm run evidence          # real API self-test output in .local/<run-id>/
+```
+
+Browser tests capture WebM videos, traces and a successful confirmation screenshot under `test-results/`. These can be imported into Exhibit's recording studio. They remain manual, unverified recordings; media is not uploaded by Exhibit.
+
+In the prepared cloud environment, activate the installed toolchain:
+
+```sh
+. /workspace/.tools/activate.sh
+SAMPLE_CHROMIUM_PATH=/usr/bin/chromium npm run test:e2e
+```
+
+That command uses the installed Debian Chromium and system ffmpeg because downloading Playwright's pinned Chromium is currently blocked by the running network policy. This fallback was tested with video capture; it is a different browser version from Playwright's default. Optional browser download domains are saved in environment settings for future use.
+
+## Try the scenarios
+
+The cart contains a notebook ($18) and pen ($6). The saved sample address is selected. Successful checkout returns an order ID and $24 total. Payment declined and out-of-stock selections return explicit errors without creating an order. Reset deletes only the current browser run and seeds it again. A unique run ID is visible below checkout.
+
+API surface:
+
+| Endpoint                       | Purpose                                                      |
+| ------------------------------ | ------------------------------------------------------------ |
+| `GET /healthz`, `GET /version` | Health and actual Git HEAD, or explicit missing-commit state |
+| `GET /api/catalog`             | Prices in integer cents and sample address                   |
+| `POST /api/seed?runId=ID`      | Idempotently create an isolated run                          |
+| `POST /api/checkout?runId=ID`  | JSON `{ "scenario": "happy", "addressId": "saved-home" }`    |
+| `GET /api/order?runId=ID`      | Current order or null                                        |
+| `DELETE /api/run?runId=ID`     | Idempotent, run-scoped cleanup                               |
+
+This intentionally has no authentication and must stay on loopback. It is a local test fixture, not a deployable public staging service.
+
+## Connect the fixture to Exhibit
+
+Start Exhibit using `make dev` in `/workspace/exhibit`, then choose **Explore sample workspace**. Setup can record `justafolk/sample-project-exhibit`, this local storefront URL, `local-sample-only` as the tenant and the runbook reference. This records metadata only; Exhibit does not connect or execute the project.
+
+`exhibit/flow.yaml` and `exhibit/runbook.yaml` describe the checkout flow and bounded local recipe. Both remain `example-not-approved`. A human-reviewed runbook is a future execution prerequisite.
+
+`exhibit/contracts.json` contains three labelled synthetic completeness inputs. Copy only the inner object into a contract. The complete example uses an explicitly synthetic SHA/PR; replace those with actual immutable refs before meaningful provenance testing. To exercise the real evaluator while Exhibit is running:
+
+```sh
+EXHIBIT_URL=http://127.0.0.1:27672 npm run test:exhibit
+```
+
+Use the actual Vite port from Exhibit's local `.env` if different. This checks all three evaluator states and logs out its isolated sample session.
+
+`npm run evidence` runs API tests and saves actual output. Only a **clean, committed** checkout emits a commit-bound manifest compatible with Exhibit's existing evidence tooling. If the checkout has no commits, results truthfully contain `headSha: null` and no manifest is fabricated. From a clean committed checkout, generate and validate evidence with:
+
+```sh
+npm run evidence
+python3 ../exhibit/scripts/evidence_tool.py report .local/RUN_ID/manifest.json \
+  --artifact-root .local/RUN_ID --expected-sha FULL_ACTUAL_HEAD_SHA
+```
+
+Even a passing report is self-reported and **Unverified**. Browser captures are separate from the API self-test manifest and are not claimed as API-test artifacts.
+
+See [the feature test guide](exhibit/FEATURES.md) for supported and future coverage. No webhook delivery, staging job, trusted upload or GitHub check is simulated as a working integration.

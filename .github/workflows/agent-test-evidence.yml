@@ -17,12 +17,30 @@ jobs:
       sha: ${{ steps.gate.outputs.sha }}
     steps:
       - id: gate
-        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@5b0b22406fe8b0acaf85b154e60d772004d54049
+        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@3fcbf645d96e211c8000ce712c6fbb78defeb4e3
         with:
           mode: gate
-  evidence:
+  start-comment:
     needs: gate
     if: needs.gate.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    outputs:
+      status: ${{ steps.start.outputs.status }}
+    steps:
+      - name: Announce testing as justafolk
+        id: start
+        uses: justafolk/exhibit/.github/actions/publish-pr-evidence@3fcbf645d96e211c8000ce712c6fbb78defeb4e3
+        with:
+          phase: start
+          comment-token: ${{ secrets.EXHIBIT_COMMENT_TOKEN }}
+          head-sha: ${{ needs.gate.outputs.sha }}
+          pull-request: ${{ github.event.pull_request.number }}
+  evidence:
+    needs: [gate, start-comment]
+    if: always() && needs.gate.outputs.eligible == 'true' && needs.start-comment.result == 'success' && needs.start-comment.outputs.status == 'published'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -39,6 +57,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - name: Prepare animated preview encoder
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
       - run: mkdir -p .local/evidence test-results
       - name: Run API evidence tests
         id: api
@@ -51,10 +75,11 @@ jobs:
       - name: Collect via Exhibit
         id: collect
         if: always() && (steps.browser.outcome == 'success' || steps.browser.outcome == 'failure')
-        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@5b0b22406fe8b0acaf85b154e60d772004d54049
+        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@3fcbf645d96e211c8000ce712c6fbb78defeb4e3
         with:
           require-video: "true"
           require-api: "true"
+          create-previews: "true"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         id: upload
         if: always() && (steps.browser.outcome == 'success' || steps.browser.outcome == 'failure')
@@ -108,7 +133,7 @@ jobs:
       - name: Review evidence with Codex CLI
         id: agent
         if: always()
-        uses: justafolk/exhibit/.github/actions/codex-evidence-review@5b0b22406fe8b0acaf85b154e60d772004d54049
+        uses: justafolk/exhibit/.github/actions/codex-evidence-review@3fcbf645d96e211c8000ce712c6fbb78defeb4e3
         with:
           codex-auth-json: ${{ secrets.CODEX_AUTH_JSON }}
           evidence-bundle: evidence-bundle
@@ -121,3 +146,33 @@ jobs:
           path: codex-review/
           retention-days: 7
           if-no-files-found: error
+  publish-comment:
+    needs: [gate, evidence, codex-review]
+    if: always() && needs.gate.outputs.eligible == 'true' && (needs.codex-review.result == 'success' || needs.codex-review.result == 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      # No PR checkout, model, media decoder or source execution in this job.
+      - name: Download completed CI report
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: codex-ci-report-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: pr-comment/report
+      - name: Download original evidence and checked previews
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: exhibit-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: pr-comment/evidence
+      - name: Publish report as justafolk
+        id: publish
+        uses: justafolk/exhibit/.github/actions/publish-pr-evidence@3fcbf645d96e211c8000ce712c6fbb78defeb4e3
+        with:
+          comment-token: ${{ secrets.EXHIBIT_COMMENT_TOKEN }}
+          media-token: ${{ github.token }}
+          bundle: pr-comment
+          head-sha: ${{ needs.gate.outputs.sha }}
+          pull-request: ${{ github.event.pull_request.number }}

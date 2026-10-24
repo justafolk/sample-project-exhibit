@@ -115,3 +115,21 @@ The Codex authentication file is an account credential. It is not automatically 
 The **codex-review** job publishes a `codex-ci-report-pr-<PR>-<RUN>-<ATTEMPT>` artifact on success and failure. Download and extract it, then open **`report.html`** for the standalone report, **`report.md`** for Markdown or **`report.json`** for machine-readable results. A completed model review also retains the original `review.md`.
 
 The report ties the Codex outcome to the PR/head SHA and run attempt, lists validated browser assertion and recording counts, and presents agent suggestions separately from deterministic results. Missing authentication is **not configured**; setup/agent errors produce a failure report rather than invented advice. The Markdown report is also available in the Actions job summary. Reports remain advisory and Unverified, and do not claim Codex watched the video content. Downloads are retained for seven days alongside the separate original video evidence bundle.
+
+## Full-stack evidence demo: express delivery
+
+Checkout now offers **Standard (free)** and **Express ($5.00)** delivery. Choosing Express visibly updates the total from $24.00 to $29.00. The API independently calculates `subtotalCents`, `deliveryCents`, `delivery` and `totalCents`; submitted client totals cannot change the price. The first committed order remains stable on retries, and invalid delivery/body input creates no order.
+
+The `agent-test` workflow runs **9 named backend HTTP tests** with `npm run test:api:evidence` and **4 recorded browser flows**. The new recording shows selecting Express, the updated price and the confirmation matching the backend receipt. Backend checks cover pricing, client-price tampering, validation, rejection paths, idempotency and cleanup isolation.
+
+The raw Node JUnit (`api-tests.xml`) and clean-start provenance (`api-capture.json`) are included in the evidence bundle. Exhibit validates and hashes those files, adds individual API assertions to the same manifest as browser/video evidence, and keeps API failures failed. The Codex CI report displays separate frontend/backend counts and each named test's outcome. No agent commentary can convert a failing API assertion into a pass.
+
+### Automatic report comment as @justafolk
+
+After the CI report is uploaded, an isolated publishing job posts or updates one automated comment **authored by @justafolk**, with frontend/backend test counts, the commit/run, full report and video/API artifact links, individual results, Codex suggestions, and coverage limits. The publisher checks the token's actual GitHub identity and refuses bot fallback or a different account. Stale runs cannot overwrite a newer report, and unrelated comments are not edited.
+
+Store a fine-grained user token as `EXHIBIT_COMMENT_TOKEN` in this repository's Actions secrets, scoped to this repository with **Pull requests: read/write**. The workflow's separate `GITHUB_TOKEN` handles private preview assets with Contents: write and Actions: read. Neither credential is given to PR tests, Codex, or FFmpeg.
+
+GitHub strips native `<video>` tags from API-posted comments. The comment embeds **animated GIF previews** (up to 20 seconds each), with full-resolution recordings in the linked artifact. Preview images are generated in the secret-free test job and stored on the private, media-only `exhibit-evidence-previews` branch; their private Git history persists separately from seven-day video/report artifacts. A native GitHub video-player attachment requires uploading through GitHub's UI and is not claimed by this automation.
+
+Before the labelled evidence tests begin, a separate account-checked job posts **`hey i've started`** as @justafolk, with the exact head SHA and run link. The API/browser evidence job waits for that comment to be published. The start notification and completed report have separate stable markers, so a rerun updates those two owned comments instead of adding repeated copies. A stale PR head, closed/draft PR or removed label suppresses stale notifications. A missing/wrong commenting account fails explicitly; there is no bot fallback.

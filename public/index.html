@@ -94,6 +94,12 @@
           <option value="payment-declined">Payment declined</option>
           <option value="out-of-stock">Out of stock</option>
         </select>
+        <label for="delivery">Delivery</label>
+        <select id="delivery">
+          <option value="standard">Standard — free</option>
+          <option value="express">Express — $5.00</option>
+        </select>
+        <p id="delivery-cost" aria-live="polite">Delivery $0.00</p>
         <p>
           <button id="checkout" disabled>Place sample order</button>
           <button id="reset">Reset this run</button>
@@ -107,6 +113,16 @@
       document.querySelector("#run").textContent = "Run: " + runId;
       const result = document.querySelector("#result");
       const button = document.querySelector("#checkout");
+      let subtotalCents = 0;
+      function updateTotal() {
+        const deliveryCents =
+          document.querySelector("#delivery").value === "express" ? 500 : 0;
+        document.querySelector("#delivery-cost").textContent =
+          "Delivery $" + (deliveryCents / 100).toFixed(2);
+        document.querySelector("#total").textContent =
+          "Total $" + ((subtotalCents + deliveryCents) / 100).toFixed(2);
+      }
+      document.querySelector("#delivery").onchange = updateTotal;
       async function request(path, method = "GET", body) {
         const response = await fetch(
           path + (path.includes("?") ? "&" : "?") + "runId=" + runId,
@@ -133,9 +149,8 @@
           document.querySelector("#items").append(row);
         }
         document.querySelector("#items").firstChild.remove();
-        document.querySelector("#total").textContent =
-          "Total $" +
-          (items.reduce((sum, i) => sum + i.priceCents, 0) / 100).toFixed(2);
+        subtotalCents = items.reduce((sum, i) => sum + i.priceCents, 0);
+        updateTotal();
         await seed();
         button.disabled = false;
       } catch (error) {
@@ -147,6 +162,7 @@
           const { order } = await request("/api/checkout", "POST", {
             addressId: "saved-home",
             scenario: document.querySelector("#scenario").value,
+            delivery: document.querySelector("#delivery").value,
           });
           result.textContent =
             "Order confirmed: " +

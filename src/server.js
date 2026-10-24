@@ -80,6 +80,11 @@ export function createApp() {
         } catch {
           return send(400, { error: "Invalid JSON" });
         }
+        if (!body || typeof body !== "object" || Array.isArray(body))
+          return send(400, { error: "Checkout body must be an object" });
+        const delivery = body.delivery ?? "standard";
+        if (!["standard", "express"].includes(delivery))
+          return send(422, { error: "Choose standard or express delivery" });
         if (
           !["happy", "payment-declined", "out-of-stock"].includes(body.scenario)
         )
@@ -94,11 +99,19 @@ export function createApp() {
           return send(409, {
             error: "Sample item out of stock; no order created",
           });
+        const subtotalCents = catalog.reduce(
+          (sum, item) => sum + item.priceCents,
+          0,
+        );
+        const deliveryCents = delivery === "express" ? 500 : 0;
         run.order ??= {
           id: `order-${runId}`,
           runId,
           addressId: address.id,
-          totalCents: catalog.reduce((sum, item) => sum + item.priceCents, 0),
+          delivery,
+          subtotalCents,
+          deliveryCents,
+          totalCents: subtotalCents + deliveryCents,
           currency: "USD",
         };
         return send(200, { order: run.order, sample: true });

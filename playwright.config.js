@@ -25,9 +25,10 @@ export default defineConfig({
     launchOptions: process.env.SAMPLE_CHROMIUM_PATH
       ? { executablePath: process.env.SAMPLE_CHROMIUM_PATH }
       : {},
-    video: "on",
+    viewport: { width: 1280, height: 720 },
+    video: { mode: "on", size: { width: 1280, height: 720 } },
     trace: "on",
-    screenshot: "only-on-failure",
+    screenshot: "on",
   },
   webServer: {
     command: "node src/server.js",

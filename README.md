@@ -93,3 +93,19 @@ Exhibit's pinned `sample-pr-evidence` action gates the event, checks checkout/ca
 This workflow uses a fresh GitHub-hosted runner, read-only repository permissions and no inherited secrets. It starts the PR code locally; it does **not** test the deployed Render service, schedule a job through Exhibit's HTTP API, post PR comments, or create a trusted verdict. Do not supply staging credentials. The ordinary CI workflow remains independent of this opt-in evidence run.
 
 Merge the Exhibit support PR before this integration. If Exhibit is private, enable same-owner action sharing in Exhibit's **Settings → Actions → General → Access** and allow the pinned actions in repository/organization policy. No extra token is needed for shared private actions. Create the `agent-test` repository label if it does not already exist.
+
+### Video recording and Codex CLI
+
+Every browser flow is recorded at 1280×720, with screenshots and traces retained on success or failure. `recordings.json` in the evidence bundle indexes the original videos by path, bytes and SHA-256, tied to the PR, commit and run attempt. Download the Actions artifact and open the corresponding file under `test-results/`. Missing video now fails Exhibit collection instead of silently accepting an unrecorded run.
+
+The workflow also has a separate **codex-review** job. It runs **Codex CLI** to review deterministic results and recording metadata and suggest coverage gaps. It does not drive a browser or claim to watch video contents. The review is advisory; it cannot change test outcomes, the evidence manifest or verification status.
+
+An OpenAI API key is **not required**: the CLI can use a Codex ChatGPT login. For unattended GitHub execution:
+
+1. Run `codex login` on a trusted local machine using the intended ChatGPT account.
+2. Store that CLI's `auth.json` contents securely as the repository's `CODEX_AUTH_JSON` Actions secret. Do not commit it, upload it, or paste it into chat. Configure a supported account with available Codex usage, and replace the secret if its login expires.
+3. Add `agent-test` to a PR or push a new commit to an already labelled PR.
+
+Without the secret, the job explicitly reports **not configured**; no Codex model is called. With it, the fresh agent job downloads and validates only that attempt's evidence, executes pinned CLI version 0.164.0 under an unprivileged user and read-only/no-network tool permissions, and uploads a separate advisory `codex-review/review.md` artifact for seven days. Model commands are denied access to the authentication directory and `/proc`; the native CLI can still authenticate. Credentials are temporary and excluded from artifacts. Model execution has a five-minute timeout; the job has a ten-minute limit. No PR code is checked out or executed in this credential-bearing job.
+
+The Codex authentication file is an account credential. It is not automatically supplied by connecting Codex to GitHub or by this cloud session. No credentials are copied from the current session. Live model execution needs validation after the GitHub secret is configured; the unauthenticated path is deliberately distinguishable from a completed review.

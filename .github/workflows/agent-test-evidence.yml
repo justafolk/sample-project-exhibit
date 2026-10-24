@@ -17,7 +17,7 @@ jobs:
       sha: ${{ steps.gate.outputs.sha }}
     steps:
       - id: gate
-        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@9968028076788aa89a0f2f67924312e65ac0a74b
+        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@2a1b53549ab4ffe4751d21493aeaa4587bca0e6d
         with:
           mode: gate
   evidence:
@@ -51,7 +51,9 @@ jobs:
       - name: Collect via Exhibit
         id: collect
         if: always() && (steps.browser.outcome == 'success' || steps.browser.outcome == 'failure')
-        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@9968028076788aa89a0f2f67924312e65ac0a74b
+        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@2a1b53549ab4ffe4751d21493aeaa4587bca0e6d
+        with:
+          require-video: "true"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         id: upload
         if: always() && (steps.browser.outcome == 'success' || steps.browser.outcome == 'failure')
@@ -77,3 +79,43 @@ jobs:
       - name: Preserve failed or missing evidence stages
         if: always() && (steps.api.outcome != 'success' || steps.browser.outcome != 'success' || steps.collect.outcome != 'success' || steps.upload.outcome != 'success')
         run: exit 1
+  codex-review:
+    needs: [gate, evidence]
+    if: always() && needs.gate.outputs.eligible == 'true' && (needs.evidence.result == 'success' || needs.evidence.result == 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      # This fresh job never checks out or executes PR source code.
+      - name: Check CLI authentication availability
+        id: auth
+        env:
+          CODEX_AUTH_JSON: ${{ secrets.CODEX_AUTH_JSON }}
+        run: |
+          if [ -n "$CODEX_AUTH_JSON" ]; then
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        if: steps.auth.outputs.configured == 'true'
+        with:
+          name: exhibit-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence-bundle
+      - name: Review evidence with Codex CLI
+        id: agent
+        uses: justafolk/exhibit/.github/actions/codex-evidence-review@2a1b53549ab4ffe4751d21493aeaa4587bca0e6d
+        with:
+          codex-auth-json: ${{ secrets.CODEX_AUTH_JSON }}
+          evidence-bundle: evidence-bundle
+          head-sha: ${{ needs.gate.outputs.sha }}
+          pull-request: ${{ github.event.pull_request.number }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: steps.agent.outputs.status == 'completed'
+        with:
+          name: codex-review-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: codex-review/review.md
+          retention-days: 7
+          if-no-files-found: error

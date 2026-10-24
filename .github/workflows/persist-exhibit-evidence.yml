@@ -1,0 +1,36 @@
+name: Save Exhibit evidence
+on:
+  workflow_run:
+    workflows: [Exhibit agent-test evidence]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Completed evidence workflow run ID to save or retry
+        required: true
+      attempt:
+        description: Exact completed attempt number
+        required: true
+        default: '1'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: exhibit-save-${{ github.event.workflow_run.id || inputs.run_id }}-${{ github.event.workflow_run.run_attempt || inputs.attempt }}
+  cancel-in-progress: false
+jobs:
+  save:
+    # This trusted workflow must live on the default branch for completion events.
+    # There is deliberately no PR checkout, model, decoder or source execution.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Save reports, recordings, job outputs and masked logs
+        uses: justafolk/exhibit/.github/actions/persist-action-evidence@89da5e7ecd6204d881fcd0bd9a664df5ef432c05
+        with:
+          exhibit-url: ${{ vars.EXHIBIT_INGEST_URL }}
+          ingestion-token: ${{ secrets.EXHIBIT_INGEST_TOKEN }}
+          github-token: ${{ github.token }}
+          workflow-run-id: ${{ github.event.workflow_run.id || inputs.run_id }}
+          workflow-run-attempt: ${{ github.event.workflow_run.run_attempt || inputs.attempt }}

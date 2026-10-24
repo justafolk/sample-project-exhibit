@@ -133,3 +133,25 @@ Store a fine-grained user token as `EXHIBIT_COMMENT_TOKEN` in this repository's 
 GitHub strips native `<video>` tags from API-posted comments. The comment embeds **animated GIF previews** (up to 20 seconds each), with full-resolution recordings in the linked artifact. Preview images are generated in the secret-free test job and stored on the private, media-only `exhibit-evidence-previews` branch; their private Git history persists separately from seven-day video/report artifacts. A native GitHub video-player attachment requires uploading through GitHub's UI and is not claimed by this automation.
 
 Before the labelled evidence tests begin, a separate account-checked job posts **`hey i've started`** as @justafolk, with the exact head SHA and run link. The API/browser evidence job waits for that comment to be published. The start notification and completed report have separate stable markers, so a rerun updates those two owned comments instead of adding repeated copies. A stale PR head, closed/draft PR or removed label suppresses stale notifications. A missing/wrong commenting account fails explicitly; there is no bot fallback.
+
+### Persistent Exhibit dashboard
+
+The `Save Exhibit evidence` workflow archives every completed eligible evidence
+attempt into the private Exhibit workspace, including original browser videos,
+backend API output, Codex reports, step output exports and GitHub-masked job logs.
+It uses a fresh job with no PR checkout. Existing start/completion comments still
+post as the configured account.
+
+Before enabling it, deploy the persistent Exhibit revision and migration, attach
+its artifact disk, then create a repository-scoped upload token in the dashboard's
+Settings. Set the Actions secret `EXHIBIT_INGEST_TOKEN` and variable
+`EXHIBIT_INGEST_URL=https://exhibit-sample.onrender.com`. Keep the secret out of test
+and model jobs. The completion workflow must be on this repository's **default
+branch**; merging only into a feature branch will not enable completion events.
+After merging, use its manual run ID/attempt inputs to backfill earlier runs while
+their GitHub artifacts still exist. Failed attempts retain their available outputs
+and explicit coverage gaps. Upload failures fail visibly and can be retried.
+
+The storage rollout, limits and privacy boundary are documented in Exhibit's
+`docs/action-evidence-storage.md`. Committing the workflow alone does not provision
+a database, disk or ingestion secret.

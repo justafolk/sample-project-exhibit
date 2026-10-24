@@ -17,7 +17,7 @@ jobs:
       sha: ${{ steps.gate.outputs.sha }}
     steps:
       - id: gate
-        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@64505a0f9db8edbc61937b96fdad61fadfe0cebf
+        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@420b7dc23252709e8b278e6eb3185d0722db8ddf
         with:
           mode: gate
   evidence:
@@ -51,7 +51,7 @@ jobs:
       - name: Collect via Exhibit
         id: collect
         if: always() && (steps.browser.outcome == 'success' || steps.browser.outcome == 'failure')
-        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@64505a0f9db8edbc61937b96fdad61fadfe0cebf
+        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@420b7dc23252709e8b278e6eb3185d0722db8ddf
         with:
           require-video: "true"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -106,16 +106,17 @@ jobs:
           path: evidence-bundle
       - name: Review evidence with Codex CLI
         id: agent
-        uses: justafolk/exhibit/.github/actions/codex-evidence-review@64505a0f9db8edbc61937b96fdad61fadfe0cebf
+        if: always()
+        uses: justafolk/exhibit/.github/actions/codex-evidence-review@420b7dc23252709e8b278e6eb3185d0722db8ddf
         with:
           codex-auth-json: ${{ secrets.CODEX_AUTH_JSON }}
           evidence-bundle: evidence-bundle
           head-sha: ${{ needs.gate.outputs.sha }}
           pull-request: ${{ github.event.pull_request.number }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: steps.agent.outputs.status == 'completed'
+        if: always()
         with:
-          name: codex-review-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: codex-review/review.md
+          name: codex-ci-report-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: codex-review/
           retention-days: 7
           if-no-files-found: error

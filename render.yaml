@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: sample-project-exhibit
+    runtime: node
+    repo: https://github.com/justafolk/sample-project-exhibit
+    branch: main
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.2
+      - key: HOST
+        value: 0.0.0.0

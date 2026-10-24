@@ -112,8 +112,13 @@ export function createApp() {
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const server = createApp();
-  server.listen(Number(process.env.PORT || 4173), "127.0.0.1", () =>
-    console.log(`Sample storefront listening on port ${server.address().port}`),
+  server.listen(
+    Number(process.env.PORT || 4173),
+    process.env.HOST || "127.0.0.1",
+    () =>
+      console.log(
+        `Sample storefront listening on port ${server.address().port}`,
+      ),
   );
   for (const signal of ["SIGTERM", "SIGINT"])
     process.on(signal, () => server.close());

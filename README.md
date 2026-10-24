@@ -48,7 +48,7 @@ API surface:
 | `GET /api/order?runId=ID`      | Current order or null                                        |
 | `DELETE /api/run?runId=ID`     | Idempotent, run-scoped cleanup                               |
 
-This intentionally has no authentication and must stay on loopback. It is a local test fixture, not a deployable public staging service.
+This intentionally has no authentication and contains only synthetic data. Local startup defaults to loopback; the Render Blueprint explicitly sets `HOST=0.0.0.0` for public sample access. Never put real customer data or credentials into this fixture. It is not a production storefront.
 
 ## Connect the fixture to Exhibit
 
@@ -75,3 +75,11 @@ python3 ../exhibit/scripts/evidence_tool.py report .local/RUN_ID/manifest.json \
 Even a passing report is self-reported and **Unverified**. Browser captures are separate from the API self-test manifest and are not claimed as API-test artifacts.
 
 See [the feature test guide](exhibit/FEATURES.md) for supported and future coverage. No webhook delivery, staging job, trusted upload or GitHub check is simulated as a working integration.
+
+## Deploy on Render
+
+The checked-in `render.yaml` defines one free Node web service from `main`, with `npm ci --omit=dev`, `npm start`, and `/healthz` as the health check. Node is pinned to 22.22.2; `HOST=0.0.0.0` lets Render route requests to the process, and Render supplies `PORT`. No database or secret is needed.
+
+In Render, create a Blueprint using `justafolk/sample-project-exhibit` and apply the configuration. An existing service can instead use the same settings. Free services may sleep when idle. State is in memory, so orders disappear on restart or deployment; use one instance. All checkout scenarios remain simulations.
+
+After deployment, check `/healthz`, `/version`, and `/api/catalog`, then place a sample order and verify the confirmation. The Blueprint is a deployment recipe; its presence alone does not establish that a live Render service exists.

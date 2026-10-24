@@ -83,3 +83,13 @@ The checked-in `render.yaml` defines one free Node web service from `main`, with
 In Render, create a Blueprint using `justafolk/sample-project-exhibit` and apply the configuration. An existing service can instead use the same settings. Free services may sleep when idle. State is in memory, so orders disappear on restart or deployment; use one instance. All checkout scenarios remain simulations.
 
 After deployment, check `/healthz`, `/version`, and `/api/catalog`, then place a sample order and verify the confirmation. The Blueprint is a deployment recipe; its presence alone does not establish that a live Render service exists.
+
+## PR evidence with `agent-test`
+
+Add the exact `agent-test` label to an open, non-draft PR in this repository. The **Exhibit agent-test evidence** workflow runs API and recorded browser tests for that PR's exact head SHA. It also runs on new commits, reopen and ready-for-review while the label remains present. Unlabelled PRs, draft PRs and forks are skipped; adding an unrelated label does not rerun evidence. Removing the label disables subsequent attempts.
+
+Exhibit's pinned `sample-pr-evidence` action gates the event, checks checkout/capture provenance, hashes browser artifacts, and publishes an **Unverified** sample report in the Actions job summary. The seven-day artifact bundle contains the manifest, report, Playwright JSON, WebM videos, traces and confirmation screenshot. Each bundle includes the PR number, run ID and attempt. Either API or browser test failure fails the evidence job. Collection still attempts to report failed browser runs; missing/invalid reports fail collection instead of inventing success.
+
+This workflow uses a fresh GitHub-hosted runner, read-only repository permissions and no inherited secrets. It starts the PR code locally; it does **not** test the deployed Render service, schedule a job through Exhibit's HTTP API, post PR comments, or create a trusted verdict. Do not supply staging credentials. The ordinary CI workflow remains independent of this opt-in evidence run.
+
+Merge the Exhibit support PR before this integration. If Exhibit is private, enable same-owner action sharing in Exhibit's **Settings → Actions → General → Access** and allow the pinned actions in repository/organization policy. No extra token is needed for shared private actions. Create the `agent-test` repository label if it does not already exist.

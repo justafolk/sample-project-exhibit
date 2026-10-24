@@ -1,5 +1,22 @@
 import { defineConfig } from "@playwright/test";
+import { execFileSync } from "node:child_process";
 export default defineConfig({
+  metadata:
+    process.env.EXHIBIT_CAPTURE === "1"
+      ? {
+          exhibitCapture: {
+            schemaVersion: 1,
+            headSha: execFileSync("git", ["rev-parse", "HEAD"], {
+              encoding: "utf8",
+            }).trim(),
+            dirty: Boolean(
+              execFileSync("git", ["status", "--porcelain"], {
+                encoding: "utf8",
+              }).trim(),
+            ),
+          },
+        }
+      : {},
   testDir: "./tests/browser",
   workers: 1,
   retries: 0,

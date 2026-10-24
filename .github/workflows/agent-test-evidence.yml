@@ -1,0 +1,122 @@
+name: Exhibit agent-test evidence
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, ready_for_review]
+permissions:
+  contents: read
+concurrency:
+  group: exhibit-evidence-${{ github.event.pull_request.number }}
+  # Keep all attempts visible; each report records the SHA it actually tested.
+  cancel-in-progress: false
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      eligible: ${{ steps.gate.outputs.eligible }}
+      sha: ${{ steps.gate.outputs.sha }}
+    steps:
+      - id: gate
+        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@420b7dc23252709e8b278e6eb3185d0722db8ddf
+        with:
+          mode: gate
+  evidence:
+    needs: gate
+    if: needs.gate.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EXHIBIT_CAPTURE: "1"
+      PLAYWRIGHT_JSON_OUTPUT_FILE: .local/evidence/playwright.json
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22.22.2"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: mkdir -p .local/evidence test-results
+      - name: Run API evidence tests
+        id: api
+        continue-on-error: true
+        run: npm test
+      - name: Record browser evidence tests
+        id: browser
+        continue-on-error: true
+        run: npm run test:e2e -- --reporter=json
+      - name: Collect via Exhibit
+        id: collect
+        if: always() && (steps.browser.outcome == 'success' || steps.browser.outcome == 'failure')
+        uses: justafolk/exhibit/.github/actions/sample-pr-evidence@420b7dc23252709e8b278e6eb3185d0722db8ddf
+        with:
+          require-video: "true"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        id: upload
+        if: always() && (steps.browser.outcome == 'success' || steps.browser.outcome == 'failure')
+        with:
+          name: exhibit-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .local/evidence/
+            test-results/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error
+      - name: Record attempt stages
+        if: always()
+        env:
+          HEAD_SHA: ${{ needs.gate.outputs.sha }}
+          API_OUTCOME: ${{ steps.api.outcome }}
+          BROWSER_OUTCOME: ${{ steps.browser.outcome }}
+          COLLECTION_OUTCOME: ${{ steps.collect.outcome }}
+          UPLOAD_OUTCOME: ${{ steps.upload.outcome }}
+        run: |
+          printf '\n## Sample PR evidence stages\n\nHead SHA: `%s`\n\nAPI tests: %s\n\nBrowser tests: %s\n\nExhibit collection: %s\n\nArtifact upload: %s\n\n' "$HEAD_SHA" "$API_OUTCOME" "$BROWSER_OUTCOME" "$COLLECTION_OUTCOME" "$UPLOAD_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' 'Local sample only. No deployed staging was exercised. A passing test run is not a trusted verified verdict. Missing captures never imply success.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve failed or missing evidence stages
+        if: always() && (steps.api.outcome != 'success' || steps.browser.outcome != 'success' || steps.collect.outcome != 'success' || steps.upload.outcome != 'success')
+        run: exit 1
+  codex-review:
+    needs: [gate, evidence]
+    if: always() && needs.gate.outputs.eligible == 'true' && (needs.evidence.result == 'success' || needs.evidence.result == 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      # This fresh job never checks out or executes PR source code.
+      - name: Check CLI authentication availability
+        id: auth
+        env:
+          CODEX_AUTH_JSON: ${{ secrets.CODEX_AUTH_JSON }}
+        run: |
+          if [ -n "$CODEX_AUTH_JSON" ]; then
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        if: steps.auth.outputs.configured == 'true'
+        with:
+          name: exhibit-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence-bundle
+      - name: Review evidence with Codex CLI
+        id: agent
+        if: always()
+        uses: justafolk/exhibit/.github/actions/codex-evidence-review@420b7dc23252709e8b278e6eb3185d0722db8ddf
+        with:
+          codex-auth-json: ${{ secrets.CODEX_AUTH_JSON }}
+          evidence-bundle: evidence-bundle
+          head-sha: ${{ needs.gate.outputs.sha }}
+          pull-request: ${{ github.event.pull_request.number }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: codex-ci-report-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: codex-review/
+          retention-days: 7
+          if-no-files-found: error
